@@ -3,7 +3,8 @@ const mongoose = require('mongoose')
 const schema = {
   username: String,
   password: String,
-  user_profile: Number,
+  profile_id: Number,
+  token: String
 }
 const account_schema = new mongoose.Schema(schema)
 const account = mongoose.model('account', account_schema)
