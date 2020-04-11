@@ -5,26 +5,46 @@ const user = require('../Schemas/UserSchema')
 const dog = require('../Schemas/DogSchema')
 
 module.exports = {
-  createDogMatch(req, res, next) { // params: my dog id, matched dog id
+  createDogMatch(req, res, next) { // params: my dog id, matched dog id array
+    console.log("createDogMatch -> req.body", req.body)
+    let i, newMatch;
     mongoose.connect(url, options).then(() => {
-      // get owner of the dog
-      dog.findOne({ id: req.body.my_dog }, (err, result) => {
+      //get owner of the dog
+      dog.findOne({ mac_id: req.body.my_dog_id }, (err, result) => {
         if (err)
-          throw err
+          res.send("owner not found")
         let ownerID = result.owner
-        const newMatch = req.body.matched_dog
-        // add match to owner
-        user.updateOne({ id: ownerID }, { $push: { dog_matches: newMatch } }, (err, result) => {
-          if (err) {
-            console.log(`err: ${err}`)
+        console.log("createDogMatch -> ownerID", ownerID)
+        console.log("createDogMatch -> req.body.matched_dogs_ids.length", req.body.matched_dogs_ids.length)
+        const matchedDogs = req.body.matched_dogs_ids;
+        for( i = 1; i <= matchedDogs.length; i++) {
+          if(matchedDogs[i] > 0){
+            console.log("matched dog", matchedDogs[i]);;
+            
+            newMatch = matchedDogs[i];
+            console.log("createDogMatch -> newMatch", newMatch)
+            // add match to owner
+            // dont update dogs of the same owner
+            user.updateOne({ id: ownerID }, { $push: { dog_matches: newMatch } }, (err, result) => {
+              if (err) {
+                console.log(`err: ${err}`)
+                res.send("cant update dog_matches ")
+
+              }
+              //if (result) {
+                //console.log(`created match [i]${newMatch},${i}`)
+              //}
+            })
           }
-          else {
-            console.log(`created match ${newMatch}`)
-            mongoose.disconnect()
-          }
-        })
+        }
       })
     })
+    .catch( e => {
+      console.log("cant connect to mongo in createDogMatch", e);
+      
+    })
+    //mongoose.disconnect()
+    res.sendStatus(200)
   },
 
   getMatches(req, res, next) {
@@ -49,6 +69,8 @@ module.exports = {
     },
       err => { console.log(`connection error: ${err}`) }
     )
+    //mongoose.disconnect()
+
   },
 }
 //FUNCTIONS OUTSIDE MODULE.EXPORTS
