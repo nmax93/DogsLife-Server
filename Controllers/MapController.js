@@ -8,7 +8,7 @@ module.exports = {
   getGardens(req, res, next) {
     mongoose.connect(url, options).then(() => {
       garden.find({}, (err, gardens) => {
-        if (err) throw err
+        if (err) console.log(`err: ${err}`)
 
         res.json(gardens)
         console.log(`returned gardens`)
@@ -22,7 +22,12 @@ module.exports = {
   getPresentDogsInGarden(req, res, next) { //params: gardenId
     mongoose.connect(url, options).then(() => {
       garden.findOne({ id: req.body.gardenId }, (err, result) => {
-        if (err) throw err
+        if (err) { console.log(`err: ${err}`) }
+        if (!result) {
+          console.log(`no garden found`)
+          res.sendStatus(404)
+          return
+        }
         dog.find({ id: { $in: result.present_dogs } }, (err, presentDogsIds) => {
           if (err) { console.log(`err: ${err}`) }
 

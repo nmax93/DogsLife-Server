@@ -42,18 +42,35 @@ module.exports = {
     mongoose.connect(url, options).then(() => {
       account.findOne({ username: req.body.username }, (err, result) => { // check if username exists
         if (err) { console.log(`err: ${err}`) }
-        if (result) { console.log(`username already exists`) }
+        if (result) {
+          console.log(`username already exists`)
+          res.json({ err: `username already exists` })
+        }
         else {
           system_data.findOne({}, (err, result) => { // get last user id used
             if (err) { console.log(`err: ${err}`) }
             increamentUserIdCounter(result)
             createNewAccount(req.body.username, req.body.password, result.last_user_id + 1)
+            res.json({ err: '' })
           })
         }
       })
     },
       err => { console.log(`connection error: ${err}`) })
   },
+
+  authenticateUser(userId, token, callback) {
+    account.findOne({ profile_id: userId, token: token }, (err, result) => { //auth
+      if (err) { console.log(`err: ${err}`) }
+      if (!result) {
+        console.log(`token expired`)
+        res.json({ err: 'token expired' })
+        mongoose.disconnect()
+        return
+      }
+      callback()
+    })
+  }
 }
 //FUNCTIONS OUTSIDE MODULE.EXPORTS
 
@@ -137,7 +154,6 @@ function createNewUserProfile(id) {
     if (err) { console.log(`err: ${err}`) }
     else {
       console.log(`created new user: ${result}`)
-      mongoose.disconnect()
     }
   })
 }
