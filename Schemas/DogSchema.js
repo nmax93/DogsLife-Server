@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 
 const schema = {
   id: Number,
-  mac_id: String,
+  collar_mac_id: String,
   service_uuid: String,
   owner: Number,
   name: String,
