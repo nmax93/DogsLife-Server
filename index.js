@@ -8,6 +8,11 @@ const profileController = require('./Controllers/ProfileController')
 
 app.use(bodyParser.json())
 app.use(express.json())
+var urlencodedParser = bodyParser.urlencoded({ extended: false })
+
+app.post('/version', (req, res, next) => {
+    console.log('Request HTTP Version: ', req.httpVersion)
+});
 
 //ACCOUNT
 app.post('/register', accountController.register)
@@ -22,8 +27,8 @@ app.post('/getMatches', matchController.getMatches)
 //MAP
 app.get('/getGardens', mapController.getGardens)
 app.post('/getPresentDogsInGarden', mapController.getPresentDogsInGarden)
-app.post('/dogEnterGarden', mapController.dogEnterGarden)
-app.post('/dogExitGarden', mapController.dogExitGarden)
+app.post('/dogsEnterGarden', urlencodedParser, mapController.dogsEnterGarden)
+// app.post('/dogExitGarden', mapController.dogExitGarden)
 
 app.listen(5050)
 console.log('Server is running')
