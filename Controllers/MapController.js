@@ -7,17 +7,9 @@ const UserSchemas = require('../Schemas/UserSchema');
 
 module.exports = {
   getGardens(req, res, next) {
-<<<<<<< HEAD
-    console.log("getGardens -> req", req)
-    mongoose.connect(url, options).then(
-      () => {
-        Garden.find({}, (err, gardens) => {
-          if (err) throw err;
-=======
     mongoose.connect(url, options).then(() => {
       garden.find({}, (err, gardens) => {
         if (err) console.log(`err: ${err}`)
->>>>>>> b7b392b378d4f83aaf204e94a2b96663ceb2d07e
 
           res.json(gardens);
           console.log(`returned gardens`);
@@ -30,20 +22,6 @@ module.exports = {
     );
   },
 
-<<<<<<< HEAD
-  getPresentDogsInGarden(req, res, next) {
-    //params: gardenId
-    mongoose.connect(url, options).then(
-      () => {
-        Garden.findOne({ id: req.body.gardenId }, (err, result) => {
-          if (err) throw err;
-          dog.find(
-            { id: { $in: result.present_dogs } },
-            (err, presentDogsIds) => {
-              if (err) {
-                console.log(`err: ${err}`);
-              }
-=======
   getPresentDogsInGarden(req, res, next) { //params: gardenId
     mongoose.connect(url, options).then(() => {
       garden.findOne({ id: req.body.gardenId }, (err, result) => {
@@ -55,7 +33,6 @@ module.exports = {
         }
         dog.find({ id: { $in: result.present_dogs } }, (err, presentDogsIds) => {
           if (err) { console.log(`err: ${err}`) }
->>>>>>> b7b392b378d4f83aaf204e94a2b96663ceb2d07e
 
               const presentDogsProfiles = [];
 
