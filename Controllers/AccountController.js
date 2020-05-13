@@ -3,7 +3,7 @@ const consts = require('../consts')
 const { url, options } = consts
 const system_data = require('../Schemas/SystemDataSchema')
 const account = require('../Schemas/AccountSchema')
-const user = require('../Schemas/UserSchema')
+const { user } = require('../Schemas/UserSchema')
 
 module.exports = {
   register(req, res, next) {
