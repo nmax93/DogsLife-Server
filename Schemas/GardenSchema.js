@@ -1,15 +1,33 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
+var Schema = mongoose.Schema;
 
-const schema = {
+const dogVisitorSchema = Schema({
+  dog_id: Number,
+  last_scan: { type: Date, default: Date.now },
+  total_attendance_minutes: { type: Number, default: 0 },
+});
+
+const dayVisitorsSchema = Schema({
+  date: { type: Date, default: Date.now },
+  dogs_visitors: [dogVisitorSchema],
+  users_visitors: [Number]
+});
+const gardenSchema = Schema({
   id: Number,
   name: String,
   image: String,
   lat: Number,
   long: Number,
   present_dogs: [Number],
-  todays_visitors: [Number]
-}
-const gardens_schema = new mongoose.Schema(schema)
-const garden = mongoose.model('garden', gardens_schema)
+  daily_visitors: [dayVisitorsSchema]
+});
 
-module.exports = garden
+
+// const Visitor = mongoose.model('Visitor', visitorSchema);
+const Garden = mongoose.model("Garden", gardenSchema);
+const DogVisitor = mongoose.model("DogVisitor", dogVisitorSchema);
+
+module.exports = {
+  Garden,
+  DogVisitor
+}
