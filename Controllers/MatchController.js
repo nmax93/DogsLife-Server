@@ -1,16 +1,17 @@
 const mongoose = require('mongoose')
 const consts = require('../consts')
 const { url, options } = consts
-const user = require('../Schemas/UserSchema')
+const { user } = require('../Schemas/UserSchema')
 const dog = require('../Schemas/DogSchema')
 
 module.exports = {
+  // Ignore dogs for the same owner!!!!!
   createDogMatch(req, res, next) { // params: my dog id, matched dog id array
     console.log("createDogMatch -> req.body", req.body)
     let i, newMatch;
     mongoose.connect(url, options).then(() => {
       //get owner of the dog
-      dog.findOne({ mac_id: req.body.my_dog_id }, (err, result) => {
+      dog.findOne({ collar_mac_id: req.body.my_dog_id }, (err, result) => {
         if (err)
           res.send("owner not found")
         let ownerID = result.owner
@@ -28,7 +29,7 @@ module.exports = {
             user.updateOne({ id: ownerID }, { $push: { dog_matches: newMatch } }, (err, result) => {
               if (err) {
                 console.log(`err: ${err}`)
-                res.send("cant update dog_matches ")
+                res.sendStatus(404).send("cant update dog_matches ") // 
 
               }
               //if (result) {
