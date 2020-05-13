@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 const consts = require('../consts')
 const { url, options } = consts
 const system_data = require('../Schemas/SystemDataSchema')
-const user = require('../Schemas/UserSchema')
+const { user } = require('../Schemas/UserSchema')
 const dog = require('../Schemas/DogSchema')
 
 module.exports = {
