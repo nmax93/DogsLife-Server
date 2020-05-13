@@ -6,26 +6,95 @@ const account = require('../Schemas/AccountSchema')
 const { user } = require('../Schemas/UserSchema')
 
 module.exports = {
-  register(req, res, next) {
+  login(req, res, next) { //res: if wrong password => { err: '...'} | if correct => { profile: {profile}, token: '...', err: ''}
     mongoose.connect(url, options).then(() => {
-      account.findOne({ username: req.body.username }, (err, result) => { // check if username exists
+      account.findOne({ username: req.body.username, password: req.body.password }, (err, result) => { //check if username exists
         if (err) { console.log(`err: ${err}`) }
-        if (result) { console.log(`username already exists`) }
+        else if (!result) {
+          console.log(`wrong password`)
+          res.json({ err: 'Wrong password' })
+        }
         else {
-          system_data.findOne({}, (err, result) => { // get last user id used
-            if (err) {
-              console.log(`err: ${err}`)
+          let token
+          if (result.token === '') {
+            token = generateToken(result)
+          }
+          else {
+            token = result.token
+          }
+          user.findOne({ id: result.profile_id }, (err, result) => { //response user his profile and token
+            if (err) { console.log(`err: ${err}`) }
+            const responseObject = {
+              profile: result,
+              token: token,
+              err: '',
             }
-            increamentUserIdCounter(result)
-            createNewAccount(req.body.username, req.body.password, result.last_user_id + 1)
+            res.json(responseObject)
+            console.log(`returned user profile with token`)
           })
         }
       })
     },
-    err => { console.log(`connection error: ${err}`) })
+      err => { console.log(`connection error: ${err}`) })
   },
+
+  register(req, res, next) {
+    mongoose.connect(url, options).then(() => {
+      account.findOne({ username: req.body.username }, (err, result) => { // check if username exists
+        if (err) { console.log(`err: ${err}`) }
+        if (result) {
+          console.log(`username already exists`)
+          res.json({ err: `username already exists` })
+        }
+        else {
+          system_data.findOne({}, (err, result) => { // get last user id used
+            if (err) { console.log(`err: ${err}`) }
+            increamentUserIdCounter(result)
+            createNewAccount(req.body.username, req.body.password, result.last_user_id + 1)
+            res.json({ err: '' })
+          })
+        }
+      })
+    },
+      err => { console.log(`connection error: ${err}`) })
+  },
+
+  authenticateUser(userId, token, callback) {
+    account.findOne({ profile_id: userId, token: token }, (err, result) => { //auth
+      if (err) { console.log(`err: ${err}`) }
+      if (!result) {
+        console.log(`token expired`)
+        res.json({ err: 'token expired' })
+        mongoose.disconnect()
+        return
+      }
+      callback()
+    })
+  }
 }
-//  FUNCTIONS OUTSIDE MODULE.EXPORTS
+//FUNCTIONS OUTSIDE MODULE.EXPORTS
+
+function generateToken(userAccount) {
+  let token = ''
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const charactersLength = characters.length
+  for (let i = 0; i < 8; i++) {
+    token += characters.charAt(Math.floor(Math.random() * charactersLength))
+  }
+  //update user account with active token
+  updatedAccountWithToken = {
+    username: userAccount.username,
+    password: userAccount.password,
+    profile_id: userAccount.profile_id,
+    token: token
+  }
+  account.updateOne({ username: userAccount.username, password: userAccount.password }, updatedAccountWithToken, (err, result) => {
+    if (err) { console.log(`err: ${err}`) }
+    else { console.log(`updated account with token: ${token}`) }
+  })
+
+  return token
+}
 
 function increamentUserIdCounter(systemObject) { //update in db user id counter + 1
   const updatedSystemObject = {
@@ -85,7 +154,6 @@ function createNewUserProfile(id) {
     if (err) { console.log(`err: ${err}`) }
     else {
       console.log(`created new user: ${result}`)
-      mongoose.disconnect()
     }
   })
 }

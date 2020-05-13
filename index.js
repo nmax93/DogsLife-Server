@@ -16,6 +16,7 @@ app.post('/version', (req, res, next) => {
 
 //ACCOUNT
 app.post('/register', accountController.register)
+app.post('/login', accountController.login)
 //PROFILE
 app.get('/getUsers', profileController.getUsers)
 app.post('/editUserProfile', profileController.editUserProfile)
