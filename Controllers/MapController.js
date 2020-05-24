@@ -2,13 +2,13 @@ const mongoose = require("mongoose");
 const consts = require("../consts");
 const { url, options, garden_sensor_pass } = consts;
 const { Garden, DogVisitor } = require("../Schemas/GardenSchema");
-const dog = require("../Schemas/DogSchema");
-const UserSchemas = require('../Schemas/UserSchema');
+const { visitedGarden } = require('../Schemas/UserSchema');
+const Dog = require('../Schemas/DogSchema')
 
 module.exports = {
   getGardens(req, res, next) {
     mongoose.connect(url, options).then(() => {
-      garden.find({}, (err, gardens) => {
+      Garden.find({}, (err, gardens) => {
         if (err) console.log(`err: ${err}`)
 
           res.json(gardens);
@@ -24,31 +24,31 @@ module.exports = {
 
   getPresentDogsInGarden(req, res, next) { //params: gardenId
     mongoose.connect(url, options).then(() => {
-      garden.findOne({ id: req.body.gardenId }, (err, result) => {
+      Garden.findOne({ id: req.body.gardenId }, (err, result) => {
         if (err) { console.log(`err: ${err}`) }
         if (!result) {
-          console.log(`no garden found`)
+          console.log(`garden not found`)
           res.sendStatus(404)
           return
         }
-        dog.find({ id: { $in: result.present_dogs } }, (err, presentDogsIds) => {
+        Dog.find({ id: { $in: result.present_dogs } }, (err, presentDogsIds) => {
           if (err) { console.log(`err: ${err}`) }
 
               const presentDogsProfiles = [];
 
-              presentDogsIds.forEach((element) => {
-                //filter irrelevant dog data
-                const dog = {
-                  id: element.id,
-                  name: element.name,
-                  owner: element.owner,
-                  age: element.age,
-                  weight: element.weight,
-                  bread: element.bread,
-                  avatar: element.avatar,
-                };
-                presentDogsProfiles.push(dog);
-              });
+          presentDogsIds.forEach(element => { //filter irrelevant dog data
+            const dog = {
+              id: element.id,
+              name: element.name,
+              description: element.description,
+              owners: element.owners,
+              age: element.physical_params.age,
+              weight: element.physical_params.weight,
+              breed: element.physical_params.breed,
+              avatar: element.avatar
+            }
+            presentDogsProfiles.push(dog)
+          })
 
               res.json(presentDogsProfiles);
               console.log(`returned present dogs`);
@@ -105,7 +105,6 @@ module.exports = {
           // const g2 = new Garden(garden);
           // const doc = await g2.save();
 
-          const { user, visitedGarden} = UserSchemas;
           // const dogId = 1;
           const g1 = await Garden.findOne({"id": gardenId}); // add errors
           if(!g1) res.status(501).send("$ Cant find garden");
@@ -173,6 +172,14 @@ module.exports = {
                     else{
                       // insert new garden for user => gardenId
                       userGardens.unshift(new visitedGarden({garden_id: gardenId, last_visit: nowDate, total_visits: 1}))
+                      /* SAME AS ABOVE? ^^^^
+                      const visited_garden = {
+                        garden_id: gardenId,
+                        last_visit: nowDate,
+                        total_visits: 1
+                      }
+                      userGardens.unshift(visited_garden)
+                      */
                     }
                   })
                   await userByDogId.save();
@@ -185,6 +192,14 @@ module.exports = {
               }
               else{
                 dogVisitors.unshift(new DogVisitor({dog_id: dogId}));
+                /* SAME AS ABOVE? ^^^^^^^
+                const dogVisitor = {
+                  dog_id: dogId,
+                  last_scan: {},
+                  total_attendance_minutes: {}
+                }
+                dogVisitors.unshift(dogVisitor)
+                */
               } 
             }
             await g1.save();         
@@ -201,5 +216,4 @@ module.exports = {
       res.status(401).send("Unauthorized request");
     }
   },
-};
-//FUNCTIONS OUTSIDE MODULE.EXPORTS
+}

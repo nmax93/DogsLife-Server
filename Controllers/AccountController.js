@@ -1,14 +1,14 @@
 const mongoose = require('mongoose')
 const consts = require('../consts')
 const { url, options } = consts
-const system_data = require('../Schemas/SystemDataSchema')
-const account = require('../Schemas/AccountSchema')
-const { user } = require('../Schemas/UserSchema')
+const System_data = require('../Schemas/SystemDataSchema')
+const Account = require('../Schemas/AccountSchema')
+const { User } = require('../Schemas/UserSchema')
 
 module.exports = {
   login(req, res, next) { //res: if wrong password => { err: '...'} | if correct => { profile: {profile}, token: '...', err: ''}
     mongoose.connect(url, options).then(() => {
-      account.findOne({ username: req.body.username, password: req.body.password }, (err, result) => { //check if username exists
+      Account.findOne({ username: req.body.username, password: req.body.password }, (err, result) => { //check if username exists
         if (err) { console.log(`err: ${err}`) }
         else if (!result) {
           console.log(`wrong password`)
@@ -22,7 +22,7 @@ module.exports = {
           else {
             token = result.token
           }
-          user.findOne({ id: result.profile_id }, (err, result) => { //response user his profile and token
+          User.findOne({ id: result.profile_id }, (err, result) => { //response user his profile and token
             if (err) { console.log(`err: ${err}`) }
             const responseObject = {
               profile: result,
@@ -40,14 +40,14 @@ module.exports = {
 
   register(req, res, next) {
     mongoose.connect(url, options).then(() => {
-      account.findOne({ username: req.body.username }, (err, result) => { // check if username exists
+      Account.findOne({ username: req.body.username }, (err, result) => { // check if username exists
         if (err) { console.log(`err: ${err}`) }
         if (result) {
           console.log(`username already exists`)
           res.json({ err: `username already exists` })
         }
         else {
-          system_data.findOne({}, (err, result) => { // get last user id used
+          System_data.findOne({}, (err, result) => { // get last user id used
             if (err) { console.log(`err: ${err}`) }
             increamentUserIdCounter(result)
             createNewAccount(req.body.username, req.body.password, result.last_user_id + 1)
@@ -60,7 +60,7 @@ module.exports = {
   },
 
   authenticateUser(userId, token, callback) {
-    account.findOne({ profile_id: userId, token: token }, (err, result) => { //auth
+    Account.findOne({ profile_id: userId, token: token }, (err, result) => { //auth
       if (err) { console.log(`err: ${err}`) }
       if (!result) {
         console.log(`token expired`)
@@ -88,7 +88,7 @@ function generateToken(userAccount) {
     profile_id: userAccount.profile_id,
     token: token
   }
-  account.updateOne({ username: userAccount.username, password: userAccount.password }, updatedAccountWithToken, (err, result) => {
+  Account.updateOne({ username: userAccount.username, password: userAccount.password }, updatedAccountWithToken, (err, result) => {
     if (err) { console.log(`err: ${err}`) }
     else { console.log(`updated account with token: ${token}`) }
   })
@@ -102,7 +102,7 @@ function increamentUserIdCounter(systemObject) { //update in db user id counter 
     last_dog_id: systemObject.last_dog_id,
     last_garden_id: systemObject.last_garden_id
   }
-  system_data.updateOne({}, updatedSystemObject, (err, result) => {
+  System_data.updateOne({}, updatedSystemObject, (err, result) => {
     if (err) { console.log(`err: ${err}`) }
     else { console.log(`updated user id counter`) }
   })
@@ -112,15 +112,16 @@ function createNewAccount(username, password, id) {
   const newAccount = {
     username: username,
     password: password,
-    user_profile: id
+    profile_id: id,
+    token: ''
   }
-  account.create(newAccount, (err, result) => {
+  Account.create(newAccount, (err, result) => {
     if (err) {
       console.log(`err: ${err}`)
     }
     else {
       console.log(`added new Account: ${newAccount}`)
-      createNewUserProfile(result.user_profile)
+      createNewUserProfile(id)
     }
   })
 }
@@ -128,29 +129,27 @@ function createNewAccount(username, password, id) {
 function createNewUserProfile(id) {
   const newUser = {
     id: id,
-    private: false,
-    name: "",
+    name: '',
     age: -1,
-    gender: "",
-    avatar: "",
+    gender: false,
+    avatar: '',
     dogs: [],
-    preferences: {
-      dogs: {
-        breads: [],
-        min_weight: -1,
-        max_weight: -1
-      },
-      owners: {
-        gender: "",
-        min_age: -1,
-        max_age: -1
-      }
+    matches: [],
+    visited_gardens: [],
+    hobbies: [false,false,false,false,false,false,false,false],
+    walk_routine: {
+      morning: { duration: -1, type: false },
+      midday: { duration: -1, type: false },
+      afternoon: { duration: -1, type: false },
+      evening: { duration: -1, type: false }
     },
-    owner_matches: [],
-    dog_matches: []
+    hangouts: [false,false,false,false],
+    number_of_dogs: 0,
+    raise_with: 1,
+    feeding_hours: { morning: -1, noon: -1, evening: -1 }
   }
 
-  user.create(newUser, (err, result) => {
+  User.create(newUser, (err, result) => {
     if (err) { console.log(`err: ${err}`) }
     else {
       console.log(`created new user: ${result}`)
