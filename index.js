@@ -5,6 +5,7 @@ const accountController = require('./Controllers/AccountController')
 const matchController = require('./Controllers/MatchController')
 const mapController = require('./Controllers/MapController')
 const profileController = require('./Controllers/ProfileController')
+const algorithmController = require('./Controllers/AlgorithmController')
 
 app.use(bodyParser.json())
 app.use(express.json())
@@ -22,13 +23,14 @@ app.post('/editUserProfile', profileController.editUserProfile)
 app.post('/editDogProfile', profileController.editDogProfile)
 app.post('/addDog', profileController.addDog)
 //MATCH
-app.get('/Matcher', matchController.Matcher)
-app.post('/createDogMatch', matchController.createDogMatch)
 app.post('/getMatches', matchController.getMatches)
 //MAP
 app.get('/getGardens', mapController.getGardens)
 app.post('/getPresentDogsInGarden', mapController.getPresentDogsInGarden)
 app.post('/dogsEnterGarden', urlencodedParser, mapController.dogsEnterGarden)
+//ALGORITHM
+app.get('/Matcher', algorithmController.Matcher)
+app.post('/createDogMatch', algorithmController.createDogMatch)
 
 app.listen(5050)
 console.log('Server is running')
