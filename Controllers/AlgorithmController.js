@@ -8,70 +8,100 @@ const Match = require('../Schemas/MatchSchema')
 const Area = require('../Schemas/AreaSchema')
 
 module.exports = {
-  // Ignore dogs for the same owner!!!!!
-  createDogMatch(req, res, next) { // params: my dog id, matched dog id array
-    console.log("createDogMatch -> req.body", req.body)
-    let i, newMatch
-    mongoose.connect(url, options).then(() => {
-      //get owner of the dog
-      Dog.findOne({ collar_mac_id: req.body.my_dog_id }, (err, result) => {
+  collarMatch(req, res, next) { // params: my dog id, matched dog id array
+    let i, j, newMatch
+    mongoose.connect(url, options).then(async () => {
+      await Dog.findOne({ id: req.body.my_dog_id }, async (err, result) => {
         if (err) { console.log(`err: ${err}`) }
         if (!result) {
           console.log(`createDogMatch -> no dog found`)
-          res.sendStatus(404)
+          res.status(404).send("cant find dog from collar")
           return
         }
-        let ownerID = result.owner
-        console.log("createDogMatch -> ownerID", ownerID)
-        console.log("createDogMatch -> req.body.matched_dogs_ids.length", req.body.matched_dogs_ids.length)
-        const matchedDogs = req.body.matched_dogs_ids
-        for (i = 1; i <= matchedDogs.length; i++) {
-          if (matchedDogs[i] > 0) {
-            console.log("matched dog", matchedDogs[i])
-
-            newMatch = matchedDogs[i]
-            console.log("createDogMatch -> newMatch", newMatch)
-            // add match to owner
-            // dont update dogs of the same owner
-            User.updateOne({ id: ownerID }, { $push: { dog_matches: newMatch } }, (err, result) => {
-              if (err) {
-                console.log(`err: ${err}`)
-                res.sendStatus(404).send("cant update dog_matches ") // 
-
+        for (j = 0; j < result.owners.length; j++) {
+          let ownerID = result.owners[j]
+          const matchedDogsWithDup = Array.from(req.body.matched_dogs_ids.split(","))
+          const matchedDogs = Array.from(new Set(matchedDogsWithDup))
+          for (i = 0; i < matchedDogs.length; i++) {
+            if (matchedDogs[i] > 0) {
+              newMatch = matchedDogs[i]
+              // add match to owner
+              // dont update dogs of the same owner - check if there is the same match ??
+              const dogOwner = await User.findOne({ id: ownerID })
+              let foundMatch
+              if (dogOwner) {
+                const ownerMatches = dogOwner.collar_matches
+                foundMatch = ownerMatches.find(match => (match == newMatch))
+                if (!foundMatch) { // didnt find the same match, will insert it
+                  ownerMatches.push(newMatch)
+                  await dogOwner.save()
+                  console.log(`match created`)
+                } else {
+                  console.log(`match already exists`)
+                }
               }
-              //if (result) {
-              //console.log(`created match [i]${newMatch},${i}`)
-              //}
-            })
+              else {
+                console.log(`cant find dog owner: ${ownerID}`)
+                res.status(404).send(`$ createDogMatch -> cant find dog owner: ${ownerID}`)
+                return
+              }
+            }
           }
         }
+        return res.status(200).send("& All updated successfully - createDogMatch")
       })
+    }).catch(err => {
+      console.log(`catch mongoose error: ${err}`)
+      res.status(500).send("$")
     })
-      .catch(e => {
-        console.log("cant connect to mongo in createDogMatch", e)
-      })
-    //mongoose.disconnect()
-    res.sendStatus(200)
   },
 
   Matcher(req, res, next) {
     mongoose.connect(url, options).then(() => {
-      Garden.find({}, (err, gardens) => { //find all gardens
+      Garden.find({ id: 301 }, (err, gardens) => {
         if (err) { console.log(`err: ${err}`) }
-        if (!gardens) {
-          console.log(`Matcher -> no gardens found`)
-          return
-        }
         gardens.forEach(garden => {
-          Dog.find({ id: { $in: garden.todays_dog_visitors } }, (err, dogs) => {
+          const dogIds = []
+          garden.daily_visitors[0].dogs_visitors.forEach(dog => { //extract dog ids from objects
+            dogIds.push(dog.dog_id)
+          })
+          if (!dogIds) {
+            console.log(`Matcher -> no visitors today - garden no.${garden.id}`)
+            return
+          }
+          Dog.find({ id: { $in: dogIds } }, (err, dogs) => {
             if (err) { console.log(`err: ${err}`) }
-            if (!dogs) {
-              console.log(`Matcher -> no visitors today - garden no.${garden.id}`)
-              return
-            }
-            User.find({ id: { $in: garden.todays_dog_visitors_owners } }, (err, owners) => {
+            User.find({ id: { $in: garden.daily_visitors[0].users_visitors } }, (err, owners) => {
               if (err) { console.log(`err: ${err}`) }
               matchingFunction(dogs, owners)
+            })
+          })
+        })
+      })
+      res.sendStatus(200)
+    },
+      err => { console.log(`connection error: ${err}`) }
+    )
+  },
+
+  dogsAvgTimeInGardenUpdater(req, res, next) {
+    mongoose.connect(url, options).then(() => {
+      Garden.find({}, (err, gardens) => {
+        if (err) { console.log(`err: ${err}`) }
+        gardens.forEach(garden => {
+          garden.daily_visitors[0].dogs_visitors.forEach(dog => {
+            Dog.findOne({ id: dog.dog_id }, (err, dogProfile) => {
+              if (err) { console.log(`err: ${err}`) }
+              const curAvgTime = dogProfile.avg_time_in_garden
+              const t = (curAvgTime.time * curAvgTime.visits + dog.total_attendance_minutes) / (curAvgTime.visits + 1)
+              const newAvgTime = {
+                time: t.toFixed(2),
+                visits: curAvgTime.visits + 1
+              }
+              console.log(`cur: ${curAvgTime}, new: { time: ${newAvgTime.time}, visits: ${newAvgTime.visits} }`)
+              Dog.updateOne({ id: dog.dog_id }, newAvgTime, (err, result) => {
+                if (err) { console.log(`err: ${err}`) }
+              })
             })
           })
         })
@@ -88,23 +118,44 @@ module.exports = {
         if (err) { console.log(`err: ${err}`) }
         areas.forEach(area => {
           const users = area.users
-          for (let i = 0; i < users.length; i++) {
+          if (users.length < 2) return
+          for (let i = 0; i < users.length - 1; i++) {
             for (let j = i + 1; j < users.length; j++) {
-              if (distance(users[i], users[j]) <= 1) {
-                User.updateOne({ id: users[i].id }, { $push: { nearby_users: users[j].id } }, (err, result) => {
+              const d = distance(users[i], users[j])
+              if (d <= 1.5) {
+                const matchId = "" + users[i].id + users[j].id
+                Match.findOne({ id: matchId }, (err, result) => {
                   if (err) { console.log(`err: ${err}`) }
-                  console.log(`user ${users[i].id} near user ${users[j].id}`)
-                })
-                User.updateOne({ id: users[j].id }, { $push: { nearby_users: users[i].id } }, (err, result) => {
-                  if (err) { console.log(`err: ${err}`) }
-                  console.log(`user ${users[j].id} near user ${users[i].id}`)
+                  if (result) {
+                    console.log(`match ${matchId} already exists`)
+                    return
+                  } else {
+                    const user1Match = {
+                      user: users[j].id,
+                      distance: d.toFixed(1)
+                    }
+                    const user2Match = {
+                      user: users[i].id,
+                      distance: d.toFixed(1)
+                    }
+                    User.updateOne({ id: users[i].id }, { $push: { geo_matches: user1Match } }, (err, result) => {
+                      if (err) { console.log(`err: ${err}`) }
+                    })
+                    User.updateOne({ id: users[j].id }, { $push: { geo_matches: user2Match } }, (err, result) => {
+                      if (err) { console.log(`err: ${err}`) }
+                    })
+                    Match.create({ id: matchId }, (err, result) => {
+                      if (err) { console.log(`err: ${err}`) }
+                    })
+                    console.log(`user ${users[j].id} ${d.toFixed(1)}km from user ${users[i].id}`)
+                    res.sendStatus(200)
+                  }
                 })
               }
             }
           }
         })
       })
-      res.sendStatus(200)
     },
       err => { console.log(`connection error: ${err}`) }
     )
@@ -114,7 +165,7 @@ module.exports = {
 //FUNCTIONS OUTSIDE MODULE.EXPORTS
 function matchingFunction(dogs, owners) {
   const newMatches = []
-  for (let i = 0; i < dogs.length; i++) { // foreach dog i
+  for (let i = 0; i < dogs.length - 1; i++) { // foreach dog i
     for (let j = i + 1; j < dogs.length; j++) { // and dog j
       // check if dogs match. if not, continue to the next dog. if yes, check owners
       const dogs_match_grade = checkIfDogsMatch(dogs[i], dogs[j])
@@ -133,7 +184,7 @@ function matchingFunction(dogs, owners) {
             const matchID = generateMatchID(dogs[i].id, dogs[i].owners[k], dogs[j].id, dogs[j].owners[l])
             const match_object = {
               id: Number(matchID),
-              grade: dogs_match_grade * 0.6 + owners_match_grade * 0.4
+              grade: Math.round(dogs_match_grade * 0.6 + owners_match_grade * 0.4)
             }
             newMatches.push(match_object)
           }
@@ -185,14 +236,14 @@ function checkIfOwnersMatch(owner1, owner2) {
   // check for at least 1 mutual hobbie
   for (let i = 0; i < owner1.hobbies.length; i++) {
     if (owner1.hobbies[i] === owner2.hobbies[i]) {
-      grade += 30
+      grade += 35
       break
     }
   }
   // check for at least 1 mutual hangout place
   for (let i = 0; i < owner1.hangouts.length; i++) {
     if (owner1.hangouts[i] === owner2.hangouts[i]) {
-      grade += 30
+      grade += 35
       break
     }
   }
@@ -200,36 +251,32 @@ function checkIfOwnersMatch(owner1, owner2) {
   // check for mutual walk routine and deviation of 10 minutes
   if (owner1.walk_routine.morning.duration > 0 && owner2.walk_routine.morning.duration > 0) {
     if (owner1.walk_routine.morning.type === owner2.walk_routine.morning.type) {
-      grade += 10
+      grade += 15
       if (Math.abs(owner1.walk_routine.morning.duration - owner2.walk_routine.morning.duration) <= 10)
-        grade += 10
+        grade += 15
     }
   }
   else if (owner1.walk_routine.midday.duration > 0 && owner2.walk_routine.midday.duration > 0) {
     if (owner1.walk_routine.midday.type === owner2.walk_routine.midday.type) {
-      grade += 10
+      grade += 15
       if (Math.abs(owner1.walk_routine.midday.duration - owner2.walk_routine.midday.duration) <= 10)
-        grade += 10
+        grade += 15
     }
   }
   else if (owner1.walk_routine.afternoon.duration > 0 && owner2.walk_routine.afternoon.duration > 0) {
     if (owner1.walk_routine.afternoon.type === owner2.walk_routine.afternoon.type) {
-      grade += 10
+      grade += 15
       if (Math.abs(owner1.walk_routine.afternoon.duration - owner2.walk_routine.afternoon.duration) <= 10)
-        grade += 10
+        grade += 15
     }
   }
   else if (owner1.walk_routine.evening.duration > 0 && owner2.walk_routine.evening.duration > 0) {
     if (owner1.walk_routine.evening.type === owner2.walk_routine.evening.type) {
-      grade += 10
+      grade += 15
       if (Math.abs(owner1.walk_routine.evening.duration - owner2.walk_routine.evening.duration) <= 10)
-        grade += 10
+        grade += 15
     }
   }
-  // check for mutual number of dogs
-  if (owner1.number_of_dogs === owner2.number_of_dogs) grade += 10
-  // check for mutual people dog is raised with (family/ partner ....)
-  if (owner1.raise_with === owner2.raise_with) grade += 10
 
   return grade
 }
@@ -245,14 +292,23 @@ function sendMatchesToUsers(matches) {
       if (err) { console.log(`err: ${err}`) }
       if (!result) {
         const matchStr = '' + match.id
-        const dog1 = Number(matchStr[0])
-        const dog2 = Number(matchStr[1])
-        const user1 = Number(matchStr.substring(2, 5))
-        const user2 = Number(matchStr.substring(5, 7))
-        User.updateOne({ id: user1 }, { $push: { matches: dog2 } }, (err, result) => {
+        const user1Match = {
+          user: Number(matchStr.substring(5, 7)),
+          dog: Number(matchStr[1]),
+          grade: match.grade
+        }
+        const user2Match = {
+          user: Number(matchStr.substring(2, 5)),
+          dog: Number(matchStr[0]),
+          grade: match.grade
+        }
+        User.updateOne({ id: user2Match.user }, { $push: { matches: user1Match } }, (err, result) => {
           if (err) { console.log(`err: ${err}`) }
         })
-        User.updateOne({ id: user2 }, { $push: { matches: dog1 } }, (err, result) => {
+        User.updateOne({ id: user1Match.user }, { $push: { matches: user2Match } }, (err, result) => {
+          if (err) { console.log(`err: ${err}`) }
+        })
+        Match.create({ id: match.id }, (err, result) => {
           if (err) { console.log(`err: ${err}`) }
         })
         console.log(match.id + " " + match.grade)

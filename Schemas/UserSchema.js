@@ -17,9 +17,9 @@ const schema = {
   matches: [Object],
   geo_matches: [Object], 
   collar_matches: [Number],
-  visited_gardens: [visitedGardenSchema],
+  visited_gardens: [Object],
   hobbies: [Boolean], //[size 8]           ///m 35%
-  walk_routine: Object,                          ///m 30%  if same type +10, if duration +10 ---deviation 15 min
+  walk_routine: Object,                          ///m 30%  if same type +15, if duration +15 ---deviation 15 min
   hangouts: [Boolean],    //[size 4]       ///m 35%
   feeding_hours: {
     morning: Number,

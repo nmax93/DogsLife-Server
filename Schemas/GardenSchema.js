@@ -20,7 +20,7 @@ const gardenSchema = Schema({
   lat: Number,
   long: Number,
   present_dogs: [Number],
-  daily_visitors: [dayVisitorsSchema]
+  daily_visitors: [Object]
 })
 
 // const Visitor = mongoose.model('Visitor', visitorSchema);
