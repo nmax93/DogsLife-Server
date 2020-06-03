@@ -23,8 +23,6 @@ const schema = {
   hobbies: [Boolean], //[size 8]           ///m 32%
   walk_routine: Object,                          ///m 20%  if same type +10, if duration +10 ---deviation 15 min
   hangouts: [Boolean],    //[size 4]       ///m 28%
-  number_of_dogs: Number, //if equal       ///m 10%
-  raise_with: Number,     //if same (3 options)  ///m 10%
   feeding_hours: {
     morning: Number,
     noon: Number,
