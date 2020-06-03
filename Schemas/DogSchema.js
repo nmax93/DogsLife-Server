@@ -1,12 +1,6 @@
 const mongoose = require('mongoose')
 var Schema = mongoose.Schema;
 
-// const visitedGarden = {
-//   garden_id: Number,
-//   last_visit: { type: Date, default: Date.now },
-//   total_visits: { type: Number, default: 0 },
-//   avg_play_time: Number, // in minutes
-// }
 const visitedGardenSchema = Schema({
    garden_id: Number,
   last_visit: { type: Date, default: Date.now },
