@@ -1,82 +1,99 @@
 const mongoose = require('mongoose')
 const consts = require('../consts')
 const { url, options } = consts
-const { user } = require('../Schemas/UserSchema')
-const dog = require('../Schemas/DogSchema')
+const { User } = require('../Schemas/UserSchema')
+const { dog } = require('../Schemas/DogSchema')
 const accountController = require('./AccountController')
 
 module.exports = {
-  // Ignore dogs for the same owner!!!!!
   createDogMatch(req, res, next) { // params: my dog id, matched dog id array
     console.log("createDogMatch -> req.body", req.body)
-    let i, newMatch
-    mongoose.connect(url, options).then(() => {
-      //get owner of the dog
-      dog.findOne({ collar_mac_id: req.body.my_dog_id }, (err, result) => {
+    if (req.body.pass != consts.garden_sensor_pass) {
+      res.status(401).send("Unauthorized request");
+      return;
+    } 
+    else {
+    let i,j, newMatch
+    mongoose.connect(url, options).then( async () => {
+      await dog.findOne({ id: req.body.my_dog_id }, async (err, result) => {
         if (err) { console.log(`err: ${err}`) }
         if (!result) {
-          console.log(`createDogMatch -> no dog found`)
-          res.sendStatus(404)
-          return
+          res.status(404).send("cant find dog from collar")
+          return;
         }
-        let ownerID = result.owner
-        console.log("createDogMatch -> ownerID", ownerID)
-        console.log("createDogMatch -> req.body.matched_dogs_ids.length", req.body.matched_dogs_ids.length)
-        const matchedDogs = req.body.matched_dogs_ids
-        for (i = 1; i <= matchedDogs.length; i++) {
+        for(j=0 ; j<result.owners.length ; j++){        
+        let ownerID = result.owners[j];
+        const matchedDogsWithDup = Array.from(req.body.matched_dogs_ids.split(","));
+        const matchedDogs = Array.from(new Set(matchedDogsWithDup));        
+        for (i = 0; i < matchedDogs.length; i++) {
           if (matchedDogs[i] > 0) {
-            console.log("matched dog", matchedDogs[i])
-
             newMatch = matchedDogs[i]
-            console.log("createDogMatch -> newMatch", newMatch)
-            // add match to owner
-            // dont update dogs of the same owner
-            user.updateOne({ id: ownerID }, { $push: { dog_matches: newMatch } }, (err, result) => {
-              if (err) {
-                console.log(`err: ${err}`)
-                res.sendStatus(404).send("cant update dog_matches ") // 
-
+            const dogOwner = await User.findOne({  id: ownerID  }); 
+            let foundMatch;
+            if(dogOwner){
+              const ownerMatches =  dogOwner.matches;
+              foundMatch = ownerMatches.find(match => (match.my_dog == req.body.my_dog_id && match.with_dog == newMatch && match.collar_match == true));
+                if(!foundMatch){ 
+                  const matchToPush = {
+                    my_dog: req.body.my_dog_id,
+                    with_dog: newMatch, 
+                    collar_match: true 
+                  }
+                  ownerMatches.push(matchToPush)
+                  await dogOwner.save();
+                }
+            }
+              else {
+                res.status(404).send(`$ createDogMatch -> cant find dog owner: ${ownerID}`)
+                return;
               }
-              //if (result) {
-              //console.log(`created match [i]${newMatch},${i}`)
-              //}
-            })
+            }
           }
         }
+          return res.status(200).send("& All updated successfully - createDogMatch");
       })
     })
-      .catch(e => {
-        console.log("cant connect to mongo in createDogMatch", e)
+      .catch(err => {
+        console.log(`catch mongoose error: ${err}`);
+        res.status(500).send("$");
+
       })
     //mongoose.disconnect()
-    res.sendStatus(200)
+  }
   },
 
   getMatches(req, res, next) { //params: userId, token
-    mongoose.connect(url, options).then(() => {
-      accountController.authenticateUser(req.body.userId, req.body.token, () => { //auth
+    try{
 
-        user.findOne({ id: req.body.userId }, (err, userProfile) => { //find user
-          if (err) { console.log(`err: ${err}`) }
-
-          user.find({ id: { $in: userProfile.owner_matches } }, (err, owners) => { //get owner matches
+      mongoose.connect(url, options).then(() => {
+        accountController.authenticateUser(req.body.userId, req.body.token, () => { //auth
+          
+          User.findOne({ id: req.body.userId }, (err, userProfile) => { //find user
             if (err) { console.log(`err: ${err}`) }
-            const owner_profiles = owners
-
-            dog.find({ id: { $in: userProfile.dog_matches } }, (err, result) => { //get dog matches
+            
+            User.find({ id: { $in: userProfile.owner_matches } }, (err, owners) => { //get owner matches
               if (err) { console.log(`err: ${err}`) }
-              const dog_profiles = result
-              const matches = prepareMatchesObject(owner_profiles, dog_profiles)
-              console.log(`returned matches`)
-              res.json(matches)
-              mongoose.disconnect()
+              const owner_profiles = owners
+              
+              dog.find({ id: { $in: userProfile.dog_matches } }, (err, result) => { //get dog matches
+                if (err) { console.log(`err: ${err}`) }
+                const dog_profiles = result
+                const matches = prepareMatchesObject(owner_profiles, dog_profiles)
+                console.log(`returned matches`)
+                res.json(matches)
+                mongoose.disconnect()
+              })
             })
           })
         })
-      })
-    },
+      },
       err => { console.log(`connection error: ${err}`) }
-    )
+      )
+    }
+    catch (err){
+      console.log(`error in getMatches ${err}`);
+      
+    }
   },
 }
 //FUNCTIONS OUTSIDE MODULE.EXPORTS
@@ -105,7 +122,7 @@ function prepareMatchesObject(owners, dogs) {
       owner: element.owner,
       age: element.age,
       weight: element.weight,
-      bread: element.bread,
+      breed: element.breed,
       avatar: element.avatar
     }
     matches.dog_matches.push(dog)
