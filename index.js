@@ -22,6 +22,8 @@ app.post('/login', accountController.login)
 app.post('/editUserProfile', profileController.editUserProfile)
 app.post('/editDogProfile', profileController.editDogProfile)
 app.post('/addDog', profileController.addDog)
+app.post('/addSignupObject', profileController.addSignupObject)
+app.post('/addNewUserToExistDog', profileController.addNewUserToExistDog)
 //MATCH
 app.post('/getMatches', matchController.getMatches)
 //MAP
