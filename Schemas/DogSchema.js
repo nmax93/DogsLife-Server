@@ -8,10 +8,7 @@ const schema = { //60%
   name: String,
   description: String,
   avatar: String,
-  avg_time_in_garden: {
-    time: Number,
-    visits: Number
-  },
+  visited_gardens: [Object],
   get_along: {                               ///m c 100%
     gender: Number,  //1 m, 2 fm, 3 both
     spayed: Number, //1 spayed, 2 not spayed, 3 both
