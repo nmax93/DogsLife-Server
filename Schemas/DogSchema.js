@@ -17,6 +17,10 @@ const schema = { //60%
   description: String,
   avatar: String,
   visited_gardens: [visitedGardenSchema],
+  avg_time_in_garden: {
+    time: Number,
+    visits: Number
+  },
   get_along: {                               ///m c 100%
     gender: Number,  //1 m, 2 fm, 3 both
     spayed: Number, //1 spayed, 2 not spayed, 3 both
@@ -41,9 +45,9 @@ const schema = { //60%
   },
 }
 const dogs_schema = new mongoose.Schema(schema)
-const dog = mongoose.model('dog', dogs_schema)
+const Dog = mongoose.model('dog', dogs_schema)
 const visitedGarden = mongoose.model('visitedGarden', visitedGardenSchema)
 
 module.exports =  {
-  dog,
+  Dog,
   visitedGarden }

@@ -8,12 +8,9 @@ const schema = {
   gender: Boolean, //false m, true fm
   avatar: String,
   dogs: [Number],
-  matches: [ {
-    owner: Number,
-    my_dog: Number,
-    with_dog: Number,
-    collar_match: { type: Boolean, default: false }
-  } ],
+  matches: [Object],
+  geo_matches: [Object], 
+  collar_matches: [Number],
   address: {
     lat: String,
     lng: String,

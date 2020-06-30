@@ -4,7 +4,7 @@ const { url, options } = consts;
 const account = require("../Schemas/AccountSchema");
 const system_data = require("../Schemas/SystemDataSchema");
 const { User } = require("../Schemas/UserSchema");
-const { dog } = require("../Schemas/DogSchema");
+const { Dog } = require("../Schemas/DogSchema");
 const accountController = require("./AccountController");
 
 module.exports = {
@@ -24,7 +24,7 @@ module.exports = {
               }
               const dogsIdArray = Array.from(foundUser.dogs);
               console.log("getUserProfile -> dogsIdArray", dogsIdArray)
-              await dog.find().where('id').in(dogsIdArray).exec((err, foundDogs) => {
+              await Dog.find().where('id').in(dogsIdArray).exec((err, foundDogs) => {
                 if (err) {
                   console.log(`err: ${err}`);
                   res.status(501).send(`getUserProfile Cant find user dogs`);
@@ -66,7 +66,7 @@ module.exports = {
             // }
             try {
               console.log("addNewUserToExistDog -> signupUserObject.macId", macId)
-              const foundDog =  await dog.findOne({ collar_mac_id: macId });
+              const foundDog =  await Dog.findOne({ collar_mac_id: macId });
               if(!foundDog) {
                 res.status(501).send(`$ Cant find dog by mac Id ${macId}`);
               }
@@ -248,7 +248,7 @@ module.exports = {
           req.body.token,
           () => {
             //auth
-            dog.findOne({ id: req.body.dogId }, (err, result) => {
+            Dog.findOne({ id: req.body.dogId }, (err, result) => {
               // find dog
               if (err) {
                 console.log(`err: ${err}`);
@@ -263,7 +263,7 @@ module.exports = {
                 weight: req.body.weight,
                 avatar: req.body.avatar,
               };
-              dog.updateOne(
+              Dog.updateOne(
                 { id: req.body.dogId },
                 updatedDogProfile,
                 (err, result) => {
@@ -358,7 +358,7 @@ async function createNewDogProfile(
     },
   };
   try {
-    await dog.create(newDog, (err, result) => {
+    await Dog.create(newDog, (err, result) => {
       if (err) {
         console.log(`err createNewDogProfile: ${err}`);
         return new Error(err);

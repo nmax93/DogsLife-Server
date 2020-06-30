@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const consts = require("../consts");
 const { url, options, garden_sensor_pass } = consts;
 const { Garden, DogVisitor } = require("../Schemas/GardenSchema");
-const { dog, visitedGarden } = require("../Schemas/DogSchema");
+const { Dog, visitedGarden } = require("../Schemas/DogSchema");
 const { User } = require("../Schemas/UserSchema");
 
 module.exports = {
@@ -91,7 +91,7 @@ module.exports = {
       async () => {
         const result = await Garden.findOne({ id: req.body.gardenId });
         if(!result) return res.status(404).send(`Cant find garden ${req.body.gardenId}`);
-        const presentDogsIds = await dog.find({ id: { $in: result.present_dogs }});
+        const presentDogsIds = await Dog.find({ id: { $in: result.present_dogs }});
         if (!presentDogsIds) return res.status(404).send(`Cant find dogs ${result.present_dogs}`);
         let presentDogsProfiles = [], i;
         for(i=0; i<presentDogsIds.length;i++) {
@@ -116,7 +116,7 @@ module.exports = {
 
     mongoose.connect(url, options).then(
       async () => {
-        const ownerDogs = await dog.find({ id: { $in: req.body.dogs }});
+        const ownerDogs = await Dog.find({ id: { $in: req.body.dogs }});
         if (!ownerDogs) return res.status(404).send(`Cant find dogs ${req.body.dogs}`);
           res.json(ownerDogs);
           return;
@@ -165,6 +165,8 @@ module.exports = {
   },
   dogsEnterGarden(req, res, next) {
     const { pass, dogs_ids, garden_id } = req.body;
+    console.log("dogsEnterGarden -> dogs_ids.length", dogs_ids.length)
+    
     if (pass != garden_sensor_pass) {
       res.status(401).send("Unauthorized request");
       return;
@@ -183,10 +185,12 @@ module.exports = {
           let userVisitors = dailyVisitors.users_visitors;
           g1.present_dogs = dogsIds; // replace with updated current dogs in garden
           const nowDate = new Date();
-          let dogFoundInGarden, i, j, dogOwners;
+          let dogFoundInGarden, i;
+          if(!dogsIds.length == 0){
           for (i = 0; i < dogsIds.length; i++) {
             const dogId = dogsIds[i];
-            let dogToFind = await dog.findOne({ id: dogId });
+            console.log("dogsEnterGarden -> dogId", dogId)
+            let dogToFind = await Dog.findOne({ id: dogId });
             if (!dogToFind) {
               console.log("$ Cant find dog Id in DB,", dogId);
               continue;
@@ -246,6 +250,7 @@ module.exports = {
             }
             await dogToFind.save();
           }
+        }
           await g1.save();
           return res.status(200).send("& All updated successfully");
         })

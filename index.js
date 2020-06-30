@@ -1,18 +1,15 @@
-var express = require('express')
-var app = express()
-var bodyParser = require('body-parser')
+const express = require('express')
+const app = express()
+const bodyParser = require('body-parser')
 const accountController = require('./Controllers/AccountController')
 const matchController = require('./Controllers/MatchController')
 const mapController = require('./Controllers/MapController')
 const profileController = require('./Controllers/ProfileController')
+const algorithmController = require('./Controllers/AlgorithmController')
 
 app.use(bodyParser.json())
 app.use(express.json())
-var urlencodedParser = bodyParser.urlencoded({ extended: false })
-
-app.post('/version', (req, res, next) => {
-    console.log('Request HTTP Version: ', req.httpVersion)
-});
+const urlencodedParser = bodyParser.urlencoded({ extended: false })
 
 //ACCOUNT
 app.post('/register', accountController.register)
@@ -36,6 +33,11 @@ app.post('/dogsEnterGarden', urlencodedParser, mapController.dogsEnterGarden)
 app.post('/addReview', mapController.addReview)
 app.post('/getDogOwners', mapController.getDogOwners)
 app.post('/getOwnerDogs', mapController.getOwnerDogs)
+//ALGORITHM
+app.post('/collarMatch', algorithmController.collarMatch)
+app.get('/Matcher', algorithmController.Matcher)
+app.get('/distanceMatcher', algorithmController.distanceMatcher)
+app.get('/dogsAvgTimeInGardenUpdater', algorithmController.dogsAvgTimeInGardenUpdater)
 
 app.listen(5050)
 console.log('Server is running')

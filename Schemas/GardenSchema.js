@@ -6,13 +6,14 @@ const dogVisitorSchema = Schema({
   first_scan: { type: Date, default: Date.now }, // when dog is presented in garden we calculate how many minutes left in avg
   last_scan: { type: Date, default: Date.now },
   total_attendance_minutes: { type: Number, default: 0 },
-});
+})
 
 const dayVisitorsSchema = Schema({
   date: { type: Date, default: Date.now },
   dogs_visitors: [dogVisitorSchema],
   users_visitors: [Number]
-});
+})
+
 const gardenSchema = Schema({
   id: Number,
   name: String,

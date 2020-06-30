@@ -2,131 +2,125 @@ const mongoose = require('mongoose')
 const consts = require('../consts')
 const { url, options } = consts
 const { User } = require('../Schemas/UserSchema')
-const { dog } = require('../Schemas/DogSchema')
+const { Dog } = require('../Schemas/DogSchema')
 const accountController = require('./AccountController')
 
 module.exports = {
-  createDogMatch(req, res, next) { // params: my dog id, matched dog id array
-    console.log("createDogMatch -> req.body", req.body)
-    if (req.body.pass != consts.garden_sensor_pass) {
-      res.status(401).send("Unauthorized request");
-      return;
-    } 
-    else {
-    let i,j, newMatch
-    mongoose.connect(url, options).then( async () => {
-      await dog.findOne({ id: req.body.my_dog_id }, async (err, result) => {
-        if (err) { console.log(`err: ${err}`) }
-        if (!result) {
-          res.status(404).send("cant find dog from collar")
-          return;
-        }
-        for(j=0 ; j<result.owners.length ; j++){        
-        let ownerID = result.owners[j];
-        const matchedDogsWithDup = Array.from(req.body.matched_dogs_ids.split(","));
-        const matchedDogs = Array.from(new Set(matchedDogsWithDup));        
-        for (i = 0; i < matchedDogs.length; i++) {
-          if (matchedDogs[i] > 0) {
-            newMatch = matchedDogs[i]
-            const dogOwner = await User.findOne({  id: ownerID  }); 
-            let foundMatch;
-            if(dogOwner){
-              const ownerMatches =  dogOwner.matches;
-              foundMatch = ownerMatches.find(match => (match.my_dog == req.body.my_dog_id && match.with_dog == newMatch && match.collar_match == true));
-                if(!foundMatch){ 
-                  const matchToPush = {
-                    my_dog: req.body.my_dog_id,
-                    with_dog: newMatch, 
-                    collar_match: true 
-                  }
-                  ownerMatches.push(matchToPush)
-                  await dogOwner.save();
-                }
-            }
-              else {
-                res.status(404).send(`$ createDogMatch -> cant find dog owner: ${ownerID}`)
-                return;
-              }
-            }
-          }
-        }
-          return res.status(200).send("& All updated successfully - createDogMatch");
-      })
-    })
-      .catch(err => {
-        console.log(`catch mongoose error: ${err}`);
-        res.status(500).send("$");
-
-      })
-    //mongoose.disconnect()
-  }
-  },
-
   getMatches(req, res, next) { //params: userId, token
-    try{
+    mongoose.connect(url, options).then(() => {
+      accountController.authenticateUser(req.body.userId, req.body.token, () => { //auth
+        User.findOne({ id: req.body.userId }, (err, userProfile) => { //find user
+          if (err) { console.log(`err: ${err}`) }
 
-      mongoose.connect(url, options).then(() => {
-        accountController.authenticateUser(req.body.userId, req.body.token, () => { //auth
-          
-          User.findOne({ id: req.body.userId }, (err, userProfile) => { //find user
+          const matches = { systemMatches: [], geoMatches: [], collarMatches: [] } //return object
+
+          // SYSTEM MATCHES GENERATION
+
+          const systen_match_dogs = []
+          const system_match_owners = []
+          const system_match_grades = []
+          userProfile.matches.forEach(match => {
+            systen_match_dogs.push(match.dog)
+            system_match_owners.push(match.user)
+            system_match_grades.push(match.grade)
+          })
+          User.find({ id: { $in: system_match_owners } }, (err, ownerProfiles) => { //get matched owners profile
             if (err) { console.log(`err: ${err}`) }
-            
-            User.find({ id: { $in: userProfile.owner_matches } }, (err, owners) => { //get owner matches
+            Dog.find({ id: { $in: systen_match_dogs } }, (err, dogProfiles) => { //get matched dogs profile
               if (err) { console.log(`err: ${err}`) }
-              const owner_profiles = owners
-              
-              dog.find({ id: { $in: userProfile.dog_matches } }, (err, result) => { //get dog matches
-                if (err) { console.log(`err: ${err}`) }
-                const dog_profiles = result
-                const matches = prepareMatchesObject(owner_profiles, dog_profiles)
-                console.log(`returned matches`)
-                res.json(matches)
-                mongoose.disconnect()
+              for (let i = 0; i < system_match_owners.length; i++) { // pare the dog and its owner into 1 object
+                const owner = ownerProfiles.find(({ id }) => id === system_match_owners[i])
+                const dog = dogProfiles.find(({ id }) => id === systen_match_dogs[i])
+                const match = prepareMatchObject(owner, dog, system_match_grades[i])
+                matches.systemMatches.push(match)
+              }
+
+              //GEO MATCHES GENERATION
+
+              const geo_match_distance = []
+              const geo_match_owners = []
+              userProfile.geo_matches.forEach(match => {
+                geo_match_distance.push(match.distance)
+                geo_match_owners.push(match.user)
               })
+              User.find({ id: { $in: geo_match_owners } }, (err, ownerProfiles) => { //get matched owners profile
+                if (err) { console.log(`err: ${err}`) }
+                for (let i = 0; i < geo_match_owners.length; i++) { // pare the distance and the owner into 1 object
+                  const owner = ownerProfiles.find(({ id }) => id === geo_match_owners[i])
+                  const match = prepareGeoMatchObject(owner, geo_match_distance[i])
+                  matches.geoMatches.push(match)
+                }
+              })
+
+                //COLLAR MATCHES GENERATION
+
+                Dog.find({ id: { $in: userProfile.collar_matches } }, (err, dogProfiles) => { //get matched dogs profile
+                  if (err) { console.log(`err: ${err}`) }
+                  dogProfiles.forEach(dog => {
+                    const match = prepareCollarMatchObject(dog)
+                    matches.collarMatches.push(match)
+                  })
+                  console.log(`returned matches`)
+                  res.json(matches)
+                  mongoose.disconnect()
+                })
             })
           })
         })
-      },
+      })
+    },
       err => { console.log(`connection error: ${err}`) }
-      )
-    }
-    catch (err){
-      console.log(`error in getMatches ${err}`);
-      
-    }
+    )
   },
 }
+
 //FUNCTIONS OUTSIDE MODULE.EXPORTS
-
-function prepareMatchesObject(owners, dogs) {
-  const matches = {
-    owner_matches: [],
-    dog_matches: [],
-    err: '',
+function prepareMatchObject(owner, dog, grade) {
+  const filtered_owner_profile = {
+    id: owner.id,
+    name: owner.name,
+    avatar: owner.avatar,
   }
-  owners.forEach(element => { //filter irrelevant owner data
-    const owner = {
-      id: element.id,
-      name: element.name,
-      age: element.age,
-      gender: element.gender,
-      avatar: element.avatar,
-      dogs: element.dogs
-    }
-    matches.owner_matches.push(owner)
-  })
-  dogs.forEach(element => { //filter irrelevant dog data
-    const dog = {
-      id: element.id,
-      name: element.name,
-      owner: element.owner,
-      age: element.age,
-      weight: element.weight,
-      breed: element.breed,
-      avatar: element.avatar
-    }
-    matches.dog_matches.push(dog)
-  })
+  const filtered_dog_profile = {
+    id: dog.id,
+    name: dog.name,
+    avatar: dog.avatar
+  }
+  const match = { owner: filtered_owner_profile, dog: filtered_dog_profile, grade: grade }
+  return match
+}
 
-  return matches
+//FUNCTIONS OUTSIDE MODULE.EXPORTS
+function prepareMatchObject(owner, dog, grade) {
+  const filtered_owner_profile = {
+    id: owner.id,
+    name: owner.name,
+    avatar: owner.avatar,
+  }
+  const filtered_dog_profile = {
+    id: dog.id,
+    name: dog.name,
+    avatar: dog.avatar
+  }
+  const match = { owner: filtered_owner_profile, dog: filtered_dog_profile, grade: grade }
+  return match
+}
+
+function prepareGeoMatchObject(owner, distance) {
+  const filtered_owner_profile = {
+    id: owner.id,
+    name: owner.name,
+    avatar: owner.avatar,
+  }
+  const match = { owner: filtered_owner_profile, distance: distance }
+  return match
+}
+
+function prepareCollarMatchObject(dog) {
+  const filtered_dog_profile = {
+    id: dog.id,
+    name: dog.name,
+    avatar: dog.avatar
+  }
+  return filtered_dog_profile
 }
