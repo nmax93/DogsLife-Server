@@ -92,14 +92,10 @@ module.exports = {
           garden.daily_visitors[0].dogs_visitors.forEach(dog => {
             Dog.findOne({ id: dog.dog_id }, (err, dogProfile) => {
               if (err) { console.log(`err: ${err}`) }
-              const curAvgTime = dogProfile.avg_time_in_garden
-              const t = (curAvgTime.time * curAvgTime.visits + dog.total_attendance_minutes) / (curAvgTime.visits + 1)
-              const newAvgTime = {
-                time: t.toFixed(2),
-                visits: curAvgTime.visits + 1
-              }
-              console.log(`cur: ${curAvgTime}, new: { time: ${newAvgTime.time}, visits: ${newAvgTime.visits} }`)
-              Dog.updateOne({ id: dog.dog_id }, newAvgTime, (err, result) => {
+              const visited_garden = dogProfile.visited_gardens.find(({ garden_id }) => garden_id === garden.id)
+              const newAvgTime = (visited_garden.avg_play_time * visited_garden.total_visits + dog.total_attendance_minutes) / (visited_garden.total_visits + 1)
+              Dog.updateOne({ "id": 1, "visited_gardens.garden_id": garden.id }, 
+              {$set: {"visited_gardens.$.total_visits": visited_garden.total_visits + 1,"visited_gardens.$.avg_play_time": newAvgTime }},  (err, result) => {
                 if (err) { console.log(`err: ${err}`) }
               })
             })

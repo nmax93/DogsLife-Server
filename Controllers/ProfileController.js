@@ -6,6 +6,7 @@ const system_data = require("../Schemas/SystemDataSchema");
 const { User } = require("../Schemas/UserSchema");
 const { Dog } = require("../Schemas/DogSchema");
 const accountController = require("./AccountController");
+const Area = require('../Schemas/AreaSchema')
 
 module.exports = {
   getUserProfile(req, res, next){
@@ -413,9 +414,33 @@ async function createUserProfile(
       lng: lng,
       radiusInMeters: radiusInMeters,
     };
+    const userCoords = {
+      id: userId,
+      coords: {
+        lat: lat,
+        long: lng
+      }
+    }
+    associateUserToGeoArea(userCoords)
   }
   await userFound.save();
   return true;
+}
+
+function associateUserToGeoArea(user) {
+  const lat = user.coords.lat
+  const long = user.coords.long
+  Area.find({}, (err, areas) => {
+    if (err) { console.log(`err: ${err}`) }
+    areas.forEach(area => {
+      if (lat >= area.coords.min_lat && long >= area.coords.min_long && lat <= area.coords.max_lat && long <= area.coords.max_long) {
+        Area.updateOne({ id: area.id }, { $push: { users: user } }, (err, result) => {
+          if (err) { console.log(`err: ${err}`) }
+        })
+        return
+      }
+    })
+  })
 }
 
 function addDogToUserDogsArray(userId, dogId) {

@@ -21,7 +21,6 @@ app.post('/editDogProfile', profileController.editDogProfile)
 app.post('/addDog', profileController.addDog)
 app.post('/addSignupObject', profileController.addSignupObject)
 app.post('/addNewUserToExistDog', profileController.addNewUserToExistDog)
-
 //MATCH
 app.post('/createDogMatch', urlencodedParser, matchController.createDogMatch)
 
