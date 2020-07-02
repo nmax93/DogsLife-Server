@@ -28,7 +28,7 @@ module.exports = {
                 res.status(501).send(`Cant find user ${req.body.userId}`);
               }
               const dogsIdArray = Array.from(foundUser.dogs);
-              // functions.logger.log("getUserProfile -> dogsIdArray", dogsIdArray)
+              functions.logger.log("getUserProfile -> dogsIdArray", dogsIdArray)
               await Dog.find().where('id').in(dogsIdArray).exec((err, foundDogs) => {
                 if (err) {
                   console.log(`err: ${err}`);
@@ -36,7 +36,7 @@ module.exports = {
                   
                 }
                 const userDogs = [];
-                // functions.logger.log("getUserProfile -> foundDogs", foundDogs)
+                functions.logger.log("getUserProfile -> foundDogs", foundDogs)
                 foundDogs.forEach((dogFound) => {
                   // functions.logger.log("getUserProfile -> dogFound", dogFound)
                   userDogs.push(dogFound)
@@ -47,13 +47,13 @@ module.exports = {
               })
               }
               catch (err){
-                // functions.logger.log("getUserProfile -> err", err)
+                functions.logger.log("getUserProfile -> err", err)
                 return res.status(501).send(`Cant addDog`);
                 
               }
       },
       (err) => {
-        // functions.logger.log(`connection error: ${err}`);
+        functions.logger.log(`connection error: ${err}`);
         return res.status(500).send(`mongoose getUserProfile connection error: ${err}`);
         
       }
