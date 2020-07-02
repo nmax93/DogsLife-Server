@@ -11,10 +11,11 @@ module.exports = {
   collarMatch(req, res, next) { // params: my dog id, matched dog id array
     let i, j, newMatch
     mongoose.connect(url, options).then(async () => {
-      await Dog.findOne({ id: req.body.my_dog_id }, async (err, result) => {
+      const dogId = req.body.my_dog_id
+      await Dog.findOne({ id: dogId }, async (err, result) => {
         if (err) { console.log(`err: ${err}`) }
         if (!result) {
-          console.log(`createDogMatch -> no dog found`)
+          console.log(`collarMatch -> no dog found`)
           res.status(404).send("cant find dog from collar")
           return
         }
@@ -25,30 +26,31 @@ module.exports = {
           for (i = 0; i < matchedDogs.length; i++) {
             if (matchedDogs[i] > 0) {
               newMatch = matchedDogs[i]
-              // add match to owner
-              // dont update dogs of the same owner - check if there is the same match ??
               const dogOwner = await User.findOne({ id: ownerID })
               let foundMatch
               if (dogOwner) {
                 const ownerMatches = dogOwner.collar_matches
-                foundMatch = ownerMatches.find(match => (match == newMatch))
+                foundMatch = ownerMatches.find(match => (match.otherDog == newMatch && match.ownerDog == dogId))
                 if (!foundMatch) { // didnt find the same match, will insert it
-                  ownerMatches.push(newMatch)
+                  ownerMatches.push({
+                    ownerDog: Number(dogId),
+                    otherDog: Number(newMatch)
+                  })
                   await dogOwner.save()
                   console.log(`match created`)
                 } else {
-                  console.log(`match already exists`)
+                  console.log(`Match already exists for user ${ownerID} - createDogCollarMatch`)
                 }
               }
               else {
                 console.log(`cant find dog owner: ${ownerID}`)
-                res.status(404).send(`$ createDogMatch -> cant find dog owner: ${ownerID}`)
+                res.status(404).send(`$ collarMatch -> cant find dog owner: ${ownerID}`)
                 return
               }
             }
           }
         }
-        return res.status(200).send("& All updated successfully - createDogMatch")
+        return res.status(200).send("& All updated successfully - createDogCollarMatch")
       })
     }).catch(err => {
       console.log(`catch mongoose error: ${err}`)
