@@ -12,7 +12,7 @@ module.exports = {
         if (err) { console.log(`err: ${err}`) }
         else if (!result) {
           console.log(`wrong password`)
-          res.json({ err: 'Wrong password' })
+          res.json({ err: 'Wrong email or password' })
         }
         else {
           let token
