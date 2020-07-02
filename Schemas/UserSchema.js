@@ -1,6 +1,8 @@
 const mongoose = require('mongoose')
 
 const schema = {
+  date_created: { type: Date, default: Date.now },
+  is_registered: { type: Boolean, default: false },
   id: Number,
   device_mac_id: String,
   name: String,
@@ -10,7 +12,7 @@ const schema = {
   dogs: [Number],
   matches: [Object],
   geo_matches: [Object], 
-  collar_matches: [Number],
+  collar_matches: [Object],
   address: {
     lat: String,
     lng: String,
