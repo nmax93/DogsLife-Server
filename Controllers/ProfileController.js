@@ -7,6 +7,10 @@ const { User } = require("../Schemas/UserSchema");
 const { Dog } = require("../Schemas/DogSchema");
 const accountController = require("./AccountController");
 const Area = require('../Schemas/AreaSchema')
+// const functions = require("firebase-functions");
+
+// functions.logger.log("Hello from info. Here's an object:", someObj);
+
 
 module.exports = {
   getUserProfile(req, res, next){
@@ -24,34 +28,34 @@ module.exports = {
                 res.status(501).send(`Cant find user ${req.body.userId}`);
               }
               const dogsIdArray = Array.from(foundUser.dogs);
-              console.log("getUserProfile -> dogsIdArray", dogsIdArray)
+              // functions.logger.log("getUserProfile -> dogsIdArray", dogsIdArray)
               await Dog.find().where('id').in(dogsIdArray).exec((err, foundDogs) => {
                 if (err) {
                   console.log(`err: ${err}`);
-                  res.status(501).send(`getUserProfile Cant find user dogs`);
-                  return;
+                  return res.status(501).send(`getUserProfile Cant find user dogs`);
+                  
                 }
                 const userDogs = [];
-                console.log("getUserProfile -> foundDogs", foundDogs)
+                // functions.logger.log("getUserProfile -> foundDogs", foundDogs)
                 foundDogs.forEach((dogFound) => {
-                console.log("getUserProfile -> dogFound", dogFound)
+                  // functions.logger.log("getUserProfile -> dogFound", dogFound)
                   userDogs.push(dogFound)
                 })
-                res.status(200).json({foundUser, userDogs});
+                return res.status(200).json({foundUser, userDogs});
                 // mongoose.disconnect();
-                return;
+                
               })
               }
               catch (err){
-                console.log("getUserProfile -> err", err)
-                res.status(501).send(`Cant addDog`);
-                return;
+                // functions.logger.log("getUserProfile -> err", err)
+                return res.status(501).send(`Cant addDog`);
+                
               }
       },
       (err) => {
-        console.log(`connection error: ${err}`);
-        res.status(500).send(`mongoose getUserProfile connection error: ${err}`);
-        return
+        // functions.logger.log(`connection error: ${err}`);
+        return res.status(500).send(`mongoose getUserProfile connection error: ${err}`);
+        
       }
     );
   },
@@ -112,7 +116,7 @@ module.exports = {
     } = req.body;
     mongoose.connect(url, options).then(
       async () => {
-        // accountController.authenticateUser(req.body.userId, req.body.token, () => { //auth
+        accountController.authenticateUser(req.body.userId, req.body.token, async () => { //auth
         await system_data.findOne({}, async (err, result) => {
           if (err) {
             console.log(`err addSignupObject: ${err}`);
@@ -141,13 +145,14 @@ module.exports = {
             if (userRes == true){
               res.status(200).send(`addSignupObject success`);
               return
+            
             }  
             
           } catch (err) {
             console.log(err);
           }
         });
-        // })
+        })
       },
       (err) => {
         console.log(`connection error addSignupObject: ${err}`);
@@ -162,10 +167,10 @@ module.exports = {
       async () => {
         try{
 
-          // accountController.authenticateUser(
-            //   req.body.userId,
-            //   req.body.token,
-            //   () => {
+          accountController.authenticateUser(
+              userId,
+              token,
+              async () => {
               //auth
               await system_data.findOne({}, async (err, result) => {
                 if (err) {
@@ -185,6 +190,7 @@ module.exports = {
                 await addDogToUserDogsArray(userId, result.last_dog_id + 1);
                 });
                 // });
+              })
               }
               catch{
                 res.status(501).send(`Cant addDog`);
@@ -278,6 +284,36 @@ module.exports = {
                   }
                 }
               );
+            });
+          }
+        );
+      },
+      (err) => {
+        console.log(`connection error: ${err}`);
+      }
+    );
+  },
+  isDogIdExist(req, res, next) {
+    mongoose.connect(url, options).then(
+      () => {
+        accountController.authenticateUser(
+          req.body.userId,
+          req.body.token,
+          () => {
+            //auth
+            Dog.findOne({ id: req.body.dogId }, (err, result) => {
+            console.log("isDogIdExist -> result", result)
+              // find dog
+              if (err) {
+                console.log(`err: ${err}`);
+                return res.sendStatus(500);
+              }
+              if(result) {
+                return res.sendStatus(200);
+              }
+              else{
+                return res.sendStatus(404);
+              }
             });
           }
         );
@@ -395,7 +431,8 @@ async function createUserProfile(
   const userFound = await User.findOne({ id: userId }); // add errors
   if (!userFound) return 2;
   else {
-    device_mac_id = deciveMacId ? deciveMacId.slice(0, 13) : null,
+    userFound.is_registered = true,
+    userFound.device_mac_id = deciveMacId ? deciveMacId.slice(0, 13) : null,
       userFound.name = userName,
       userFound.age = userBirthdate,
       userFound.gender = userGender,
