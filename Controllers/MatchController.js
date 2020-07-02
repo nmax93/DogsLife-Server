@@ -9,7 +9,6 @@ module.exports = {
   getMatches(req, res, next) { //params: userId, token
       mongoose.connect(url, options).then(() => {
         accountController.authenticateUser(req.body.userId, req.body.token, () => { //auth
-          console.log("getMatches -> req.body.userId", req.body.userId)
           User.findOne({ id: req.body.userId }, (err, userProfile) => { //find user
             if (err) { console.log(`err: ${err}`) }
             
@@ -58,12 +57,9 @@ module.exports = {
                 await userProfile.collar_matches.forEach(match => {
                   dogs.push(match.otherDog)
                 })
-                console.log("getMatches -> dogs", dogs)
                 Dog.find({ id: { $in: userProfile.dogs } }, (err, dogProfiles) => { //get matched dogs profile
                   if (err) { console.log(`err: ${err}`) }
-                  console.log("getMatches -> dogProfiles", dogProfiles)
                   dogProfiles.forEach(dog => {
-                  console.log("getMatches -> dog", dog)
                     const match = prepareCollarMatchObject(dog)
                     matches.collarMatches.push(match)
                   })
