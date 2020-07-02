@@ -171,8 +171,14 @@ module.exports = {
       res.status(401).send("Unauthorized request");
       return;
     } else {
-      const dogsIdsWithDup = Array.from(dogs_ids.split(","));
-      const dogsIds = Array.from(new Set(dogsIdsWithDup));
+      let dogsIds;
+      if(dogs_ids.length > 0) {
+        const dogsIdsWithDup = Array.from(dogs_ids.split(","));
+        dogsIds = Array.from(new Set(dogsIdsWithDup));
+      }
+      else {
+        dogsIds = []
+      }
       const gardenId = garden_id;
       mongoose
         .connect(url, options)
