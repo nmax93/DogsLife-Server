@@ -9,6 +9,7 @@ const visitedGardenSchema = Schema({
  });
 
 const schema = { //60%
+  date_created: { type: Date, default: Date.now },
   id: Number,
   collar_mac_id: String,
   service_uuid: String, //?
