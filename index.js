@@ -21,9 +21,10 @@ app.post('/editDogProfile', profileController.editDogProfile)
 app.post('/addDog', profileController.addDog)
 app.post('/addSignupObject', profileController.addSignupObject)
 app.post('/addNewUserToExistDog', profileController.addNewUserToExistDog)
-//MATCH
-app.post('/createDogMatch', urlencodedParser, matchController.createDogMatch)
 
+app.post('/isDogIdExist', profileController.isDogIdExist)
+
+//MATCH
 app.post('/getMatches', matchController.getMatches)
 //MAP
 app.get('/getGardens', mapController.getGardens)
@@ -33,10 +34,10 @@ app.post('/addReview', mapController.addReview)
 app.post('/getDogOwners', mapController.getDogOwners)
 app.post('/getOwnerDogs', mapController.getOwnerDogs)
 //ALGORITHM
-app.post('/collarMatch', algorithmController.collarMatch)
+app.post('/createDogMatch', urlencodedParser, algorithmController.collarMatch)
 app.get('/Matcher', algorithmController.Matcher)
 app.get('/distanceMatcher', algorithmController.distanceMatcher)
 app.get('/dogsAvgTimeInGardenUpdater', algorithmController.dogsAvgTimeInGardenUpdater)
 
-app.listen(5050)
-console.log('Server is running')
+const port = 5050;
+app.listen(port, () => console.log(`Server started on port ${port}`))
