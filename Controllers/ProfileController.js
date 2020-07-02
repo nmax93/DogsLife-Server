@@ -60,7 +60,7 @@ module.exports = {
     );
   },
   addNewUserToExistDog(req, res, next) {
-    const { signupUserObject, macId, token } = req.body;
+    const { signupUserObject, macId, token, dogId } = req.body;
     console.log("addNewUserToExistDog -> signupUserObject", signupUserObject);
     if (signupUserObject.dogInSystem) {
       mongoose.connect(url, options).then(
@@ -70,8 +70,14 @@ module.exports = {
             //   console.log(`1 err addNewUserToExistDog: ${err}`);
             // }
             try {
+              let foundDog;
               console.log("addNewUserToExistDog -> signupUserObject.macId", macId)
-              const foundDog =  await Dog.findOne({ collar_mac_id: macId });
+              if(macId){
+                foundDog =  await Dog.findOne({ collar_mac_id: macId });
+              }
+              if(dogId){
+                foundDog =  await Dog.findOne({ id: dogId });
+              }
               if(!foundDog) {
                 res.status(501).send(`$ Cant find dog by mac Id ${macId}`);
               }
